@@ -565,7 +565,7 @@ const PomodoroApp = () => {
   }, []);
 
   // Animation pour le timer
-  const timerClass = `text-6xl font-bold mb-8 ${isActive ? 'text-red-500' : ''}`;
+const timerClass = `text-6xl font-bold mb-8 ${isActive && showFiveSecondWarning ? 'text-red-700 animate-pulse' : isActive ? 'text-red-500' : ''}`;
 
   return (
     <div className="flex flex-col items-center justify-center p-6 max-w-md mx-auto bg-gray-100 rounded-lg min-h-screen">
