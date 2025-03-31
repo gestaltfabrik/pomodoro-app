@@ -16,10 +16,15 @@ const PomodoroApp = () => {
 
   useEffect(() => {
     // Initialisation des sons différents selon le contexte
-    startCycleSoundRef.current = new Audio("/sounds/mixkit-confirmation-tone-2867.wav");
-    endPomodoroSoundRef.current = new Audio("/sounds/mixkit-clock-countdown-bleeps-916.wav");
-    endShortBreakSoundRef.current = new Audio("/sounds/mixkit-uplifting-bells-notification-938.wav");
-    endCycleSoundRef.current = new Audio("/sounds/mixkit-sport-start-bleeps-918.wav");
+    // startCycleSoundRef.current = new Audio("/sounds/mixkit-confirmation-tone-2867.wav");
+    // endPomodoroSoundRef.current = new Audio("/sounds/mixkit-clock-countdown-bleeps-916.wav");
+    // endShortBreakSoundRef.current = new Audio("/sounds/mixkit-uplifting-bells-notification-938.wav");
+    // endCycleSoundRef.current = new Audio("/sounds/mixkit-sport-start-bleeps-918.wav");
+    // Utiliser des sons en ligne disponibles publiquement
+    startCycleSoundRef.current = new Audio("https://assets.mixkit.co/active_storage/sfx/2867/2867-preview.mp3");
+    endPomodoroSoundRef.current = new Audio("https://assets.mixkit.co/active_storage/sfx/916/916-preview.mp3");
+    endShortBreakSoundRef.current = new Audio("https://assets.mixkit.co/active_storage/sfx/938/938-preview.mp3");
+    endCycleSoundRef.current = new Audio("https://assets.mixkit.co/active_storage/sfx/918/918-preview.mp3");
     
     // Ajustement du volume pour des sons plus doux
     startCycleSoundRef.current.volume = 0.5;
