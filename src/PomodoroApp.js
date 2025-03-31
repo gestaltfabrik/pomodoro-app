@@ -48,6 +48,7 @@ const PomodoroApp = () => {
   const [remainingCycles, setRemainingCycles] = useState(settings.longBreakInterval);
   const [isPomodoro, setIsPomodoro] = useState(true);
   const [language, setLanguage] = useState(settings.language || 'fr');
+  const [completedPomodoros, setCompletedPomodoros] = useState(0); // Nombre de pomodoros terminés dans le cycle
   
   // Références pour les intervalles
   const timerInterval = useRef(null);
@@ -182,7 +183,6 @@ const PomodoroApp = () => {
 
   // Gérer le changement de mode
   const switchMode = useCallback((newMode) => {
-    setIsActive(false);
     clearInterval(timerInterval.current);
     
     setMode(newMode);
@@ -206,7 +206,37 @@ const PomodoroApp = () => {
     }
   }, [settings.longBreak, settings.pomodoro, settings.shortBreak]);
 
-  // Démarre le minuteur - Utilisation de useCallback pour éviter les dépendances circulaires
+  // Passer à la session suivante dans la séquence du cycle
+  const moveToNextSession = useCallback(() => {
+    // Logique pour déterminer la prochaine étape du cycle
+    if (isPomodoro) {
+      // On vient de terminer un pomodoro, on incrémente le compteur
+      const newCompletedPomodoros = completedPomodoros + 1;
+      setCompletedPomodoros(newCompletedPomodoros);
+      
+      // On calcule combien de pomodoros il reste avant la pause longue
+      const sessionsRemaining = settings.longBreakInterval - newCompletedPomodoros;
+      setRemainingCycles(sessionsRemaining);
+      
+      if (sessionsRemaining <= 0) {
+        // C'est l'heure de la pause longue
+        switchMode('longBreak');
+        setCompletedPomodoros(0);
+        setRemainingCycles(settings.longBreakInterval);
+      } else {
+        // Pause courte
+        switchMode('shortBreak');
+      }
+    } else {
+      // On vient de terminer une pause (courte ou longue), on passe au prochain pomodoro
+      switchMode('pomodoro');
+    }
+    
+    // Redémarrer automatiquement le timer
+    setIsActive(true);
+  }, [completedPomodoros, isPomodoro, settings.longBreakInterval, switchMode]);
+
+  // Démarre le minuteur
   const startTimerCountdown = useCallback(() => {
     clearInterval(timerInterval.current);
     timerInterval.current = setInterval(() => {
@@ -219,35 +249,10 @@ const PomodoroApp = () => {
           
           // Si un cycle est actif, passer à la session suivante
           if (isCycleActive) {
-            if (isPomodoro) {
-              // Fin d'une session pomodoro
-              if (remainingCycles > 1) {
-                // Passer à une pause courte
-                switchMode('shortBreak');
-              } else {
-                // Passer à une pause longue
-                switchMode('longBreak');
-                setRemainingCycles(settings.longBreakInterval);
-              }
-              setIsActive(true);
-            } else {
-              // Fin d'une pause
-              switchMode('pomodoro');
-              if (mode === 'shortBreak') {
-                setRemainingCycles(prev => prev - 1);
-              }
-              setIsActive(true);
-            }
-            // Jouer le son de début de nouvelle session
             playSound(pingSoundRef);
-            
-            // Redémarrer le timer pour la prochaine session avec un délai court
-            setTimeout(() => {
-              clearInterval(timerInterval.current);
-              timerInterval.current = setInterval(() => {
-                setTimer(prevTime => prevTime > 0 ? prevTime - 1 : 0);
-              }, 1000);
-            }, 50);
+            moveToNextSession();
+          } else {
+            setIsActive(false);
           }
           
           return 0;
@@ -256,7 +261,7 @@ const PomodoroApp = () => {
         }
       });
     }, 1000);
-  }, [isCycleActive, isPomodoro, mode, remainingCycles, settings.longBreakInterval, playSound, switchMode]);
+  }, [isCycleActive, moveToNextSession, playSound]);
 
   // Réinitialiser le minuteur
   const resetTimer = useCallback(() => {
@@ -288,30 +293,14 @@ const PomodoroApp = () => {
     if (isCycleActive) {
       clearInterval(timerInterval.current);
       setIsActive(false);
-      
-      if (isPomodoro) {
-        // Si on est en mode pomodoro, passer à la pause
-        if (remainingCycles > 1) {
-          switchMode('shortBreak');
-        } else {
-          switchMode('longBreak');
-          setRemainingCycles(settings.longBreakInterval);
-        }
-      } else {
-        // Si on est en pause, passer au prochain pomodoro
-        switchMode('pomodoro');
-        if (mode === 'shortBreak') {
-          setRemainingCycles(prev => prev - 1);
-        }
-      }
-      
-      setIsActive(true);
+      moveToNextSession();
     }
   };
 
   // Démarrer un cycle
   const startCycle = () => {
     setIsCycleActive(true);
+    setCompletedPomodoros(0);
     setRemainingCycles(settings.longBreakInterval);
     switchMode('pomodoro');
     setIsActive(true);
@@ -322,6 +311,8 @@ const PomodoroApp = () => {
   const stopCycle = () => {
     setIsCycleActive(false);
     setIsActive(false);
+    setCompletedPomodoros(0);
+    setRemainingCycles(settings.longBreakInterval);
     clearInterval(timerInterval.current);
   };
 
@@ -376,6 +367,11 @@ const PomodoroApp = () => {
         break;
       default:
         break;
+    }
+    
+    // Reset cycle state if settings change
+    if (isCycleActive) {
+      setRemainingCycles(updatedSettings.longBreakInterval);
     }
     
     setShowSettings(false);
