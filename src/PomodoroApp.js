@@ -81,8 +81,8 @@ const PomodoroApp = () => {
     fr: {
       title: "Minuteur Pomodoro",
       pomodoro: "Pomodoro",
-      shortBreak: "Pause Courte",
-      longBreak: "Pause Longue",
+      shortBreak: "Pause courte",
+      longBreak: "Pause longue",
       cycle: "Cycle Pomodoro",
       sessions: "sessions de travail",
       with: "avec",
@@ -165,8 +165,8 @@ const PomodoroApp = () => {
     ro: {
       title: "Cronometru Pomodoro",
       pomodoro: "Pomodoro",
-      shortBreak: "Pauză Scurtă",
-      longBreak: "Pauză Lungă",
+      shortBreak: "Pauză scurtă",
+      longBreak: "Pauză lungă",
       cycle: "Ciclu Pomodoro",
       sessions: "sesiuni de lucru",
       with: "cu",
