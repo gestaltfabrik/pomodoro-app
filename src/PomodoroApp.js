@@ -1,22 +1,42 @@
 // Pomodoro App
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Play, Pause, RotateCcw, SkipForward, Settings, Volume2, VolumeX, Globe, RefreshCw } from 'lucide-react';
+import { Play, Pause, RotateCcw, SkipForward, Settings, Volume2, VolumeX } from 'lucide-react';
 
 const PomodoroApp = () => {
   // Création des références pour les sons
-  const gongSoundRef = useRef(null);
-  const pingSoundRef = useRef(null);
+  const startCycleSoundRef = useRef(null);
+  const endPomodoroSoundRef = useRef(null);
+  const endShortBreakSoundRef = useRef(null);
+  const endCycleSoundRef = useRef(null);
   const announceRef = useRef(null); // Référence pour les annonces d'accessibilité
+  
+  // Référence pour les tooltips personnalisés
+  const tooltipRef = useRef(null);
 
   useEffect(() => {
-    // Initialisation des sons avec des versions plus douces
-    gongSoundRef.current = new Audio("https://assets.mixkit.co/active_storage/sfx/208/208-preview.mp3");
-    pingSoundRef.current = new Audio("https://assets.mixkit.co/active_storage/sfx/1531/1531-preview.mp3");
+    // Initialisation des sons différents selon le contexte
+    startCycleSoundRef.current = new Audio("/sounds/mixkit-confirmation-tone-2867.wav");
+    endPomodoroSoundRef.current = new Audio("/sounds/mixkit-clock-countdown-bleeps-916.wav");
+    endShortBreakSoundRef.current = new Audio("/sounds/mixkit-uplifting-bells-notification-938.wav");
+    endCycleSoundRef.current = new Audio("/sounds/mixkit-sport-start-bleeps-918.wav");
     
     // Ajustement du volume pour des sons plus doux
-    gongSoundRef.current.volume = 0.5;
-    pingSoundRef.current.volume = 0.5;
+    startCycleSoundRef.current.volume = 0.5;
+    endPomodoroSoundRef.current.volume = 0.5;
+    endShortBreakSoundRef.current.volume = 0.5;
+    endCycleSoundRef.current.volume = 0.5;
+    
+    // Créer un élément tooltip personnalisé
+    const tooltip = document.createElement('div');
+    tooltip.className = 'tooltip hidden absolute z-50 bg-gray-800 text-white px-2 py-1 rounded-md text-sm';
+    document.body.appendChild(tooltip);
+    tooltipRef.current = tooltip;
+    
+    return () => {
+      // Nettoyage
+      document.body.removeChild(tooltip);
+    };
   }, []);
 
   // Paramètres par défaut
@@ -51,6 +71,7 @@ const PomodoroApp = () => {
   const [language, setLanguage] = useState(settings.language || 'fr');
   const [completedPomodoros, setCompletedPomodoros] = useState(0); // Nombre de pomodoros terminés dans le cycle
   const [announcement, setAnnouncement] = useState(''); // Pour les annonces d'accessibilité
+  const [showFiveSecondWarning, setShowFiveSecondWarning] = useState(false); // Pour jouer le son 5s avant la fin
   
   // Références pour les intervalles
   const timerInterval = useRef(null);
@@ -89,7 +110,15 @@ const PomodoroApp = () => {
       timeUp: "Temps écoulé !",
       startingCycle: "Démarrage du cycle",
       startingSession: "Démarrage d'une session",
-      startingBreak: "Démarrage d'une pause"
+      startingBreak: "Démarrage d'une pause",
+      // Tooltips
+      playTooltip: "Démarrer",
+      pauseTooltip: "Mettre en pause",
+      resetTooltip: "Réinitialiser",
+      skipTooltip: "Passer à la session suivante",
+      soundOnTooltip: "Désactiver le son",
+      soundOffTooltip: "Activer le son",
+      settingsTooltip: "Paramètres"
     },
     en: {
       title: "Pomodoro Timer",
@@ -123,7 +152,15 @@ const PomodoroApp = () => {
       timeUp: "Time's up!",
       startingCycle: "Starting cycle",
       startingSession: "Starting a session",
-      startingBreak: "Starting a break"
+      startingBreak: "Starting a break",
+      // Tooltips
+      playTooltip: "Start",
+      pauseTooltip: "Pause",
+      resetTooltip: "Reset",
+      skipTooltip: "Skip to next session",
+      soundOnTooltip: "Disable sound",
+      soundOffTooltip: "Enable sound",
+      settingsTooltip: "Settings"
     },
     ro: {
       title: "Cronometru Pomodoro",
@@ -157,12 +194,39 @@ const PomodoroApp = () => {
       timeUp: "Timpul a expirat!",
       startingCycle: "Începerea ciclului",
       startingSession: "Începerea unei sesiuni",
-      startingBreak: "Începerea unei pauze"
+      startingBreak: "Începerea unei pauze",
+      // Tooltips
+      playTooltip: "Start",
+      pauseTooltip: "Pauză",
+      resetTooltip: "Resetare",
+      skipTooltip: "Sari la următoarea sesiune",
+      soundOnTooltip: "Dezactivează sunetul",
+      soundOffTooltip: "Activează sunetul",
+      settingsTooltip: "Setări"
     }
   };
 
   // Textes selon la langue sélectionnée
   const t = translations[language] || translations.fr;
+  
+  // Gérer l'affichage du tooltip
+  const showTooltip = (event, text) => {
+    const tooltip = tooltipRef.current;
+    if (!tooltip) return;
+    
+    tooltip.textContent = text;
+    tooltip.classList.remove('hidden');
+    
+    const rect = event.target.getBoundingClientRect();
+    tooltip.style.top = `${rect.bottom + 5}px`;
+    tooltip.style.left = `${rect.left + (rect.width / 2) - (tooltip.offsetWidth / 2)}px`;
+  };
+  
+  const hideTooltip = () => {
+    if (tooltipRef.current) {
+      tooltipRef.current.classList.add('hidden');
+    }
+  };
   
   // Announce pour l'accessibilité
   const announce = useCallback((message) => {
@@ -245,6 +309,8 @@ const PomodoroApp = () => {
         setIsPomodoro(true);
         break;
     }
+    
+    setShowFiveSecondWarning(false);
   }, [settings.longBreak, settings.pomodoro, settings.shortBreak, announce, t]);
 
   // Passer à la session suivante dans la séquence du cycle
@@ -276,32 +342,38 @@ const PomodoroApp = () => {
         setRemainingCycles(settings.longBreakInterval);
         switchMode('pomodoro');
         announce(t.cycleCompleted);
+        playSound(endCycleSoundRef); // Son spécial pour la fin du cycle
         return; // On s'arrête ici
       } else {
         // C'était une pause courte, on continue avec le prochain pomodoro
         switchMode('pomodoro');
+        playSound(endShortBreakSoundRef); // Son pour la fin d'une pause courte
       }
     }
     
     // Redémarrer automatiquement le timer
     setIsActive(true);
-  }, [completedPomodoros, isPomodoro, mode, settings.longBreakInterval, switchMode, announce, t]);
+  }, [completedPomodoros, isPomodoro, mode, settings.longBreakInterval, switchMode, announce, t, playSound]);
 
   // Démarre le minuteur
   const startTimerCountdown = useCallback(() => {
     clearInterval(timerInterval.current);
     timerInterval.current = setInterval(() => {
       setTimer(prevTime => {
+        // Si on est 5 secondes avant la fin et en mode pomodoro
+        if (prevTime === 6 && isPomodoro && isSoundEnabled) {
+          setShowFiveSecondWarning(true);
+          playSound(endPomodoroSoundRef); // Jouer le son spécial 5s avant la fin d'un pomodoro
+        }
+        
         if (prevTime <= 1) {
           clearInterval(timerInterval.current);
           
-          // Jouer le son de fin de session
-          playSound(gongSoundRef);
+          // Annonce de fin
           announce(t.timeUp);
           
           // Si un cycle est actif, passer à la session suivante
           if (isCycleActive) {
-            playSound(pingSoundRef);
             moveToNextSession();
           } else {
             setIsActive(false);
@@ -313,12 +385,13 @@ const PomodoroApp = () => {
         }
       });
     }, 1000);
-  }, [isCycleActive, moveToNextSession, playSound, announce, t]);
+  }, [isCycleActive, moveToNextSession, announce, t, isPomodoro, isSoundEnabled, playSound, endPomodoroSoundRef]);
 
   // Réinitialiser le minuteur
   const resetTimer = useCallback(() => {
     setIsActive(false);
     clearInterval(timerInterval.current);
+    setShowFiveSecondWarning(false);
     
     switch (mode) {
       case 'pomodoro':
@@ -346,6 +419,7 @@ const PomodoroApp = () => {
     if (isCycleActive) {
       clearInterval(timerInterval.current);
       setIsActive(false);
+      setShowFiveSecondWarning(false);
       moveToNextSession();
       announce(`Passage à la ${isPomodoro ? 'pause' : 'session de travail'} suivante`);
     }
@@ -358,7 +432,7 @@ const PomodoroApp = () => {
     setRemainingCycles(settings.longBreakInterval);
     switchMode('pomodoro');
     setIsActive(true);
-    playSound(pingSoundRef);
+    playSound(startCycleSoundRef); // Son spécial pour le début d'un cycle
     announce(t.startingCycle);
   };
 
@@ -368,6 +442,7 @@ const PomodoroApp = () => {
     setIsActive(false);
     setCompletedPomodoros(0);
     setRemainingCycles(settings.longBreakInterval);
+    setShowFiveSecondWarning(false);
     clearInterval(timerInterval.current);
     announce('Cycle arrêté');
   };
@@ -493,7 +568,7 @@ const PomodoroApp = () => {
   const timerClass = `text-6xl font-bold mb-8 ${isActive ? 'text-red-500' : ''}`;
 
   return (
-    <div className="flex flex-col items-center justify-center p-6 max-w-md mx-auto bg-gray-100 rounded-lg shadow-lg min-h-screen">
+    <div className="flex flex-col items-center justify-center p-6 max-w-md mx-auto bg-gray-100 rounded-lg min-h-screen">
       {/* Région d'annonce pour l'accessibilité */}
       <div className="sr-only" aria-live="polite">{announcement}</div>
       
@@ -555,6 +630,9 @@ const PomodoroApp = () => {
           className="p-3 rounded-full bg-gray-200 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
           onClick={toggleTimer}
           aria-label={isActive ? 'Pause' : 'Play'}
+          title={isActive ? t.pauseTooltip : t.playTooltip}
+          onMouseEnter={(e) => showTooltip(e, isActive ? t.pauseTooltip : t.playTooltip)}
+          onMouseLeave={hideTooltip}
         >
           {isActive ? <Pause size={24} aria-hidden="true" /> : <Play size={24} aria-hidden="true" />}
         </button>
@@ -562,6 +640,9 @@ const PomodoroApp = () => {
           className="p-3 rounded-full bg-gray-200 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
           onClick={resetTimer}
           aria-label="Réinitialiser le minuteur"
+          title={t.resetTooltip}
+          onMouseEnter={(e) => showTooltip(e, t.resetTooltip)}
+          onMouseLeave={hideTooltip}
         >
           <RotateCcw size={24} aria-hidden="true" />
         </button>
@@ -573,6 +654,9 @@ const PomodoroApp = () => {
           disabled={!isCycleActive}
           aria-label="Passer à la session suivante"
           aria-disabled={!isCycleActive}
+          title={t.skipTooltip}
+          onMouseEnter={(e) => showTooltip(e, t.skipTooltip)}
+          onMouseLeave={hideTooltip}
         >
           <SkipForward size={24} aria-hidden="true" />
         </button>
@@ -581,6 +665,9 @@ const PomodoroApp = () => {
           onClick={() => setIsSoundEnabled(!isSoundEnabled)}
           aria-label={isSoundEnabled ? "Désactiver le son" : "Activer le son"}
           aria-pressed={isSoundEnabled}
+          title={isSoundEnabled ? t.soundOnTooltip : t.soundOffTooltip}
+          onMouseEnter={(e) => showTooltip(e, isSoundEnabled ? t.soundOnTooltip : t.soundOffTooltip)}
+          onMouseLeave={hideTooltip}
         >
           {isSoundEnabled ? 
             <Volume2 size={24} aria-hidden="true" /> : 
@@ -591,6 +678,9 @@ const PomodoroApp = () => {
           onClick={() => setShowSettings(true)}
           aria-label="Ouvrir les paramètres"
           aria-haspopup="dialog"
+          title={t.settingsTooltip}
+          onMouseEnter={(e) => showTooltip(e, t.settingsTooltip)}
+          onMouseLeave={hideTooltip}
         >
           <Settings size={24} aria-hidden="true" />
         </button>
@@ -783,33 +873,32 @@ const PomodoroApp = () => {
           role="radiogroup" 
           aria-label="Sélection de langue"
         >
-          <Globe size={18} aria-hidden="true" />
           <button 
-            className={`px-2 py-1 text-sm rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${language === 'fr' ? 'bg-blue-600 text-white' : 'hover:bg-gray-200'}`}
+            className={`px-3 py-1 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${language === 'fr' ? 'bg-blue-600 text-white' : 'hover:bg-gray-200'}`}
             onClick={() => changeLanguage('fr')}
             role="radio"
             aria-checked={language === 'fr'}
             aria-label="Français"
           >
-            FR
+            Français
           </button>
           <button 
-            className={`px-2 py-1 text-sm rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${language === 'en' ? 'bg-blue-600 text-white' : 'hover:bg-gray-200'}`}
+            className={`px-3 py-1 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${language === 'en' ? 'bg-blue-600 text-white' : 'hover:bg-gray-200'}`}
             onClick={() => changeLanguage('en')}
             role="radio"
             aria-checked={language === 'en'}
             aria-label="English"
           >
-            EN
+            English
           </button>
           <button 
-            className={`px-2 py-1 text-sm rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${language === 'ro' ? 'bg-blue-600 text-white' : 'hover:bg-gray-200'}`}
+            className={`px-3 py-1 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${language === 'ro' ? 'bg-blue-600 text-white' : 'hover:bg-gray-200'}`}
             onClick={() => changeLanguage('ro')}
             role="radio"
             aria-checked={language === 'ro'}
             aria-label="Română"
           >
-            RO
+            Română
           </button>
         </div>
       </div>
