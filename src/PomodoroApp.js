@@ -15,12 +15,7 @@ const PomodoroApp = () => {
   const tooltipRef = useRef(null);
 
   useEffect(() => {
-    // Initialisation des sons différents selon le contexte
-    // startCycleSoundRef.current = new Audio("/sounds/mixkit-confirmation-tone-2867.wav");
-    // endPomodoroSoundRef.current = new Audio("/sounds/mixkit-clock-countdown-bleeps-916.wav");
-    // endShortBreakSoundRef.current = new Audio("/sounds/mixkit-uplifting-bells-notification-938.wav");
-    // endCycleSoundRef.current = new Audio("/sounds/mixkit-sport-start-bleeps-918.wav");
-    // Utiliser des sons en ligne disponibles publiquement
+    // Initialisation des sons différents selon le contexte - utilisation de sons en ligne
     startCycleSoundRef.current = new Audio("https://assets.mixkit.co/active_storage/sfx/2867/2867-preview.mp3");
     endPomodoroSoundRef.current = new Audio("https://assets.mixkit.co/active_storage/sfx/916/916-preview.mp3");
     endShortBreakSoundRef.current = new Audio("https://assets.mixkit.co/active_storage/sfx/938/938-preview.mp3");
@@ -283,7 +278,12 @@ const PomodoroApp = () => {
   const playSound = useCallback((sound) => {
     if (isSoundEnabled && sound.current) {
       sound.current.currentTime = 0;
-      sound.current.play().catch(err => console.log('Erreur audio:', err));
+      sound.current.play()
+        .then(() => console.log("Son joué avec succès"))
+        .catch(err => {
+          console.error('Erreur lors de la lecture du son:', err);
+          console.log('Source du son:', sound.current.src);
+        });
     }
   }, [isSoundEnabled]);
 
@@ -358,7 +358,7 @@ const PomodoroApp = () => {
     
     // Redémarrer automatiquement le timer
     setIsActive(true);
-  }, [completedPomodoros, isPomodoro, mode, settings.longBreakInterval, switchMode, announce, t, playSound]);
+  }, [completedPomodoros, isPomodoro, mode, settings.longBreakInterval, switchMode, announce, t, playSound, endCycleSoundRef, endShortBreakSoundRef]);
 
   // Démarre le minuteur
   const startTimerCountdown = useCallback(() => {
@@ -536,6 +536,25 @@ const PomodoroApp = () => {
     announce(`Langue changée pour ${langNames[lang]}`);
   };
 
+  // Mettre à jour le titre du document
+  const updateDocumentTitle = useCallback(() => {
+    let newTitle = t.title; // Titre par défaut (dans la langue actuelle)
+    
+    if (isActive) {
+      if (isPomodoro) {
+        // Quand un pomodoro est en cours : icône play + "Pomodoro :" + temps restant
+        newTitle = `▶ ${t.pomodoro} : ${formatTime(timer)}`;
+      } else {
+        // Quand une pause est en cours : icône pause + type de pause + temps restant
+        const breakType = mode === 'longBreak' ? t.longBreak : t.shortBreak;
+        newTitle = `⏸ ${breakType} : ${formatTime(timer)}`;
+      }
+    }
+    
+    // Mettre à jour le titre du document
+    document.title = newTitle;
+  }, [isActive, isPomodoro, mode, timer, t]);
+
   // Effet pour le timer
   useEffect(() => {
     if (isActive) {
@@ -560,6 +579,17 @@ const PomodoroApp = () => {
     }
   }, [settings, isActive, isCycleActive, resetTimer]);
 
+  // Effet pour le titre dynamique
+  useEffect(() => {
+    // Appeler la fonction pour mettre à jour le titre du document
+    updateDocumentTitle();
+    
+    // Nettoyer en rétablissant le titre original quand le composant est démonté
+    return () => {
+      document.title = t.title;
+    };
+  }, [updateDocumentTitle, t]);
+
   // Nettoyage lors du démontage
   useEffect(() => {
     return () => {
@@ -569,8 +599,14 @@ const PomodoroApp = () => {
     };
   }, []);
 
-  // Animation pour le timer
-const timerClass = `text-6xl font-bold mb-8 ${isActive && showFiveSecondWarning ? 'text-red-700 animate-pulse' : isActive ? 'text-red-500' : ''}`;
+  // Animation pour le timer - utilisant showFiveSecondWarning pour une animation pulsante
+  const timerClass = `text-6xl font-bold mb-8 ${
+    isActive && showFiveSecondWarning 
+      ? 'text-red-700 animate-pulse' 
+      : isActive 
+        ? 'text-red-500' 
+        : ''
+  }`;
 
   return (
     <div className="flex flex-col items-center justify-center p-6 max-w-md mx-auto bg-gray-100 rounded-lg min-h-screen">
