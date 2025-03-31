@@ -1,6 +1,6 @@
 // Pomodoro App
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Play, Pause, RotateCcw, SkipForward, Settings, Volume2, VolumeX, Globe, RefreshCw } from 'lucide-react';
 
 const PomodoroApp = () => {
@@ -180,8 +180,8 @@ const PomodoroApp = () => {
     }
   };
 
-  // Démarre le minuteur
-  const startTimerCountdown = () => {
+  // Démarre le minuteur - Utilisation de useCallback pour éviter les dépendances circulaires
+  const startTimerCountdown = useCallback(() => {
     clearInterval(timerInterval.current);
     timerInterval.current = setInterval(() => {
       setTimer(prevTime => {
@@ -215,8 +215,10 @@ const PomodoroApp = () => {
             // Jouer le son de début de nouvelle session
             playSound(pingSoundRef);
             
-            // Redémarrer le timer pour la prochaine session
-            startTimerCountdown();
+            // Redémarrer le timer pour la prochaine session avec un délai court
+            setTimeout(() => {
+              startTimerCountdown();
+            }, 50);
           }
           
           return 0;
@@ -225,7 +227,7 @@ const PomodoroApp = () => {
         }
       });
     }, 1000);
-  };
+  }, [isCycleActive, isPomodoro, mode, remainingCycles, settings.longBreakInterval]);
 
   // Gérer le changement de mode
   const switchMode = (newMode) => {
@@ -253,13 +255,8 @@ const PomodoroApp = () => {
     }
   };
 
-  // Démarrer/Pause le minuteur
-  const toggleTimer = () => {
-    setIsActive(!isActive);
-  };
-
   // Réinitialiser le minuteur
-  const resetTimer = () => {
+  const resetTimer = useCallback(() => {
     setIsActive(false);
     clearInterval(timerInterval.current);
     
@@ -276,6 +273,11 @@ const PomodoroApp = () => {
       default:
         setTimer(settings.pomodoro);
     }
+  }, [mode, settings.longBreak, settings.pomodoro, settings.shortBreak]);
+
+  // Démarrer/Pause le minuteur
+  const toggleTimer = () => {
+    setIsActive(!isActive);
   };
 
   // Passer à la session suivante
@@ -398,7 +400,7 @@ const PomodoroApp = () => {
     }
 
     return () => clearInterval(timerInterval.current);
-  }, [isActive]);
+  }, [isActive, startTimerCountdown]);
 
   // Effet pour les paramètres
   useEffect(() => {
@@ -411,7 +413,7 @@ const PomodoroApp = () => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('pomodoroSettings', JSON.stringify(settings));
     }
-  }, [settings]);
+  }, [settings, isActive, isCycleActive, resetTimer]);
 
   // Animation pour le timer
   const timerClass = `text-6xl font-bold mb-8 ${isActive ? 'text-red-500' : ''}`;
