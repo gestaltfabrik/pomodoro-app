@@ -1,7 +1,7 @@
 // Pomodoro App
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Play, Pause, RotateCcw, SkipForward, Settings, Volume2, VolumeX } from 'lucide-react';
+import { Play, Pause, RotateCcw, SkipForward, Settings, Volume2, VolumeX, RefreshCw } from 'lucide-react';
 
 const PomodoroApp = () => {
   // Création des références pour les sons
