@@ -27,8 +27,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const soundCheckbox = document.getElementById('sound-checkbox');
     const cycleDetails = document.getElementById('cycle-details');
     const cycleDuration = document.getElementById('cycle-duration');
-    const gongSound = document.getElementById('gong-sound');
-    const pingSound = document.getElementById('ping-sound');
     const titleElement = document.getElementById('title');
     const cycleTitle = document.getElementById('cycle-title');
     const settingsTitle = document.getElementById('settings-title');
@@ -38,6 +36,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const longBreakLabel = document.getElementById('long-break-label');
     const intervalLabel = document.getElementById('interval-label');
     const languageLabel = document.getElementById('language-label');
+    
+    // Sons audio
+    const gongSound = document.getElementById('gong-sound');
+    const pingSound = document.getElementById('ping-sound');
+    
+    // Modifier les sons pour qu'ils soient plus doux
+    gongSound.src = "https://assets.mixkit.co/active_storage/sfx/208/208-preview.mp3"; // Son de ding doux
+    pingSound.src = "https://assets.mixkit.co/active_storage/sfx/1531/1531-preview.mp3"; // Son de notification subtil
     
     // Langues
     const langButtons = document.querySelectorAll('.lang-btn');
@@ -91,7 +97,8 @@ document.addEventListener('DOMContentLoaded', () => {
             enableSound: "Activer les sons",
             cancel: "Annuler",
             save: "Enregistrer",
-            language: "Langue"
+            language: "Langue",
+            resetDefaults: "Réinitialiser"
         },
         en: {
             title: "Pomodoro Timer",
@@ -119,7 +126,8 @@ document.addEventListener('DOMContentLoaded', () => {
             enableSound: "Enable sounds",
             cancel: "Cancel",
             save: "Save",
-            language: "Language"
+            language: "Language",
+            resetDefaults: "Reset"
         },
         ro: {
             title: "Cronometru Pomodoro",
@@ -147,7 +155,8 @@ document.addEventListener('DOMContentLoaded', () => {
             enableSound: "Activează sunetele",
             cancel: "Anulează",
             save: "Salvează",
-            language: "Limbă"
+            language: "Limbă",
+            resetDefaults: "Resetează"
         }
     };
     
@@ -160,6 +169,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // Sauvegarde les paramètres dans localStorage
     function saveSettings(newSettings) {
         localStorage.setItem('pomodoroSettings', JSON.stringify(newSettings));
+    }
+    
+    // Réinitialise les paramètres par défaut
+    function resetToDefaultSettings() {
+        settings = {...defaultSettings, language: settings.language}; // Garder la langue actuelle
+        saveSettings(settings);
+        
+        // Mettre à jour les champs d'entrée
+        pomodoroInput.value = Math.floor(settings.pomodoro / 60);
+        shortBreakInput.value = Math.floor(settings.shortBreak / 60);
+        longBreakInput.value = Math.floor(settings.longBreak / 60);
+        intervalInput.value = settings.longBreakInterval;
+        soundCheckbox.checked = settings.sound;
     }
     
     // Formate le temps en MM:SS
@@ -220,6 +242,7 @@ document.addEventListener('DOMContentLoaded', () => {
         soundLabel.textContent = t.enableSound;
         document.getElementById('cancel-btn').textContent = t.cancel;
         document.getElementById('save-btn').textContent = t.save;
+        document.getElementById('reset-defaults-btn').textContent = t.resetDefaults;
         
         // Mettre à jour les détails du cycle
         updateCycleInfo();
@@ -235,13 +258,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function playSound(sound) {
         if (settings.sound) {
             sound.currentTime = 0;
-            sound.play();
+            sound.volume = 0.5; // Réduire le volume pour un son plus doux
+            sound.play().catch(err => console.log('Erreur lors de la lecture audio:', err));
         }
     }
     
     // Change le mode (pomodoro, shortBreak, longBreak)
     function switchMode(newMode) {
-        isActive = false;
         clearInterval(timerInterval);
         
         // Mettre à jour les boutons
@@ -303,46 +326,53 @@ document.addEventListener('DOMContentLoaded', () => {
         isActive = !isActive;
         
         if (isActive) {
-            timerInterval = setInterval(() => {
-                if (timer > 0) {
-                    timer--;
-                    updateDisplay();
-                } else {
-                    clearInterval(timerInterval);
-                    playSound(gongSound);
-                    
-                    // Si un cycle est actif, passer à la session suivante
-                    if (isCycleActive) {
-                        if (isPomodoro) {
-                            // Fin d'une session pomodoro
-                            if (remainingCycles > 1) {
-                                // Passer à une pause courte
-                                switchMode('shortBreak');
-                            } else {
-                                // Passer à une pause longue
-                                switchMode('longBreak');
-                                remainingCycles = settings.longBreakInterval;
-                                updateCycleRemaining();
-                            }
-                        } else {
-                            // Fin d'une pause
-                            switchMode('pomodoro');
-                            if (mode === 'shortBreak') {
-                                remainingCycles--;
-                                updateCycleRemaining();
-                            }
-                        }
-                        isActive = true;
-                        updatePlayPauseButton();
-                        playSound(pingSound);
-                    }
-                }
-            }, 1000);
+            startTimerCountdown();
         } else {
             clearInterval(timerInterval);
         }
         
         updatePlayPauseButton();
+    }
+    
+    // Démarrer le compte à rebours du minuteur
+    function startTimerCountdown() {
+        clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            if (timer > 0) {
+                timer--;
+                updateDisplay();
+            } else {
+                clearInterval(timerInterval);
+                playSound(gongSound);
+                
+                // Si un cycle est actif, passer à la session suivante
+                if (isCycleActive) {
+                    if (isPomodoro) {
+                        // Fin d'une session pomodoro
+                        if (remainingCycles > 1) {
+                            // Passer à une pause courte
+                            switchMode('shortBreak');
+                        } else {
+                            // Passer à une pause longue
+                            switchMode('longBreak');
+                            remainingCycles = settings.longBreakInterval;
+                            updateCycleRemaining();
+                        }
+                    } else {
+                        // Fin d'une pause
+                        switchMode('pomodoro');
+                        if (mode === 'shortBreak') {
+                            remainingCycles--;
+                            updateCycleRemaining();
+                        }
+                    }
+                    isActive = true;
+                    updatePlayPauseButton();
+                    startTimerCountdown(); // Redémarrer immédiatement le timer
+                    playSound(pingSound);
+                }
+            }
+        }, 1000);
     }
     
     // Réinitialise le minuteur
@@ -391,7 +421,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             isActive = true;
-            toggleTimer();
+            startTimerCountdown();
+            updatePlayPauseButton();
         }
     }
     
@@ -408,7 +439,8 @@ document.addEventListener('DOMContentLoaded', () => {
         remainingCycles = settings.longBreakInterval;
         switchMode('pomodoro');
         isActive = true;
-        toggleTimer();
+        updatePlayPauseButton();
+        startTimerCountdown();
         playSound(pingSound);
         
         // Mettre à jour l'interface
@@ -531,6 +563,7 @@ document.addEventListener('DOMContentLoaded', () => {
         stopCycleBtn.addEventListener('click', stopCycle);
         cancelBtn.addEventListener('click', closeSettings);
         saveBtn.addEventListener('click', applySettings);
+        document.getElementById('reset-defaults-btn').addEventListener('click', resetToDefaultSettings);
         
         // Event listeners pour les boutons de langue
         langButtons.forEach(btn => {
