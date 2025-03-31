@@ -27,6 +27,7 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v3
       - name: Upload artifact
+        # Utiliser v1 au lieu de v3
         uses: actions/upload-pages-artifact@v1
         with:
           path: './build'
