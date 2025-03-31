@@ -1,3 +1,5 @@
+// Pomodoro App
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, RotateCcw, SkipForward, Settings, Volume2, VolumeX, Globe, RefreshCw } from 'lucide-react';
 
