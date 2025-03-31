@@ -173,12 +173,38 @@ const PomodoroApp = () => {
   };
 
   // Jouer un son
-  const playSound = (sound) => {
+  const playSound = useCallback((sound) => {
     if (isSoundEnabled && sound.current) {
       sound.current.currentTime = 0;
       sound.current.play().catch(err => console.log('Erreur audio:', err));
     }
-  };
+  }, [isSoundEnabled]);
+
+  // Gérer le changement de mode
+  const switchMode = useCallback((newMode) => {
+    setIsActive(false);
+    clearInterval(timerInterval.current);
+    
+    setMode(newMode);
+    
+    switch (newMode) {
+      case 'pomodoro':
+        setTimer(settings.pomodoro);
+        setIsPomodoro(true);
+        break;
+      case 'shortBreak':
+        setTimer(settings.shortBreak);
+        setIsPomodoro(false);
+        break;
+      case 'longBreak':
+        setTimer(settings.longBreak);
+        setIsPomodoro(false);
+        break;
+      default:
+        setTimer(settings.pomodoro);
+        setIsPomodoro(true);
+    }
+  }, [settings.longBreak, settings.pomodoro, settings.shortBreak]);
 
   // Démarre le minuteur - Utilisation de useCallback pour éviter les dépendances circulaires
   const startTimerCountdown = useCallback(() => {
@@ -217,7 +243,10 @@ const PomodoroApp = () => {
             
             // Redémarrer le timer pour la prochaine session avec un délai court
             setTimeout(() => {
-              startTimerCountdown();
+              clearInterval(timerInterval.current);
+              timerInterval.current = setInterval(() => {
+                setTimer(prevTime => prevTime > 0 ? prevTime - 1 : 0);
+              }, 1000);
             }, 50);
           }
           
@@ -227,33 +256,7 @@ const PomodoroApp = () => {
         }
       });
     }, 1000);
-  }, [isCycleActive, isPomodoro, mode, remainingCycles, settings.longBreakInterval]);
-
-  // Gérer le changement de mode
-  const switchMode = (newMode) => {
-    setIsActive(false);
-    clearInterval(timerInterval.current);
-    
-    setMode(newMode);
-    
-    switch (newMode) {
-      case 'pomodoro':
-        setTimer(settings.pomodoro);
-        setIsPomodoro(true);
-        break;
-      case 'shortBreak':
-        setTimer(settings.shortBreak);
-        setIsPomodoro(false);
-        break;
-      case 'longBreak':
-        setTimer(settings.longBreak);
-        setIsPomodoro(false);
-        break;
-      default:
-        setTimer(settings.pomodoro);
-        setIsPomodoro(true);
-    }
-  };
+  }, [isCycleActive, isPomodoro, mode, remainingCycles, settings.longBreakInterval, playSound, switchMode]);
 
   // Réinitialiser le minuteur
   const resetTimer = useCallback(() => {
