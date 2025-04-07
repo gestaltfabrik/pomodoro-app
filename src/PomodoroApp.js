@@ -62,6 +62,7 @@ const PomodoroApp = () => {
   const [settings, setSettings] = useState(getSavedSettings());
   const [timer, setTimer] = useState(settings.pomodoro);
   const [isActive, setIsActive] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [mode, setMode] = useState('pomodoro');
   const [showSettings, setShowSettings] = useState(false);
   const [isCycleActive, setIsCycleActive] = useState(false);
@@ -290,6 +291,7 @@ const PomodoroApp = () => {
   // Gérer le changement de mode
   const switchMode = useCallback((newMode) => {
     clearInterval(timerInterval.current);
+    setIsPaused(false);
     
     setMode(newMode);
     
@@ -343,6 +345,7 @@ const PomodoroApp = () => {
         // Si c'était la pause longue, on a terminé le cycle complet
         setIsCycleActive(false);
         setIsActive(false);
+        setIsPaused(false);
         setCompletedPomodoros(0);
         setRemainingCycles(settings.longBreakInterval);
         switchMode('pomodoro');
@@ -382,6 +385,7 @@ const PomodoroApp = () => {
             moveToNextSession();
           } else {
             setIsActive(false);
+            setIsPaused(false);
           }
           
           return 0;
@@ -395,6 +399,7 @@ const PomodoroApp = () => {
   // Réinitialiser le minuteur
   const resetTimer = useCallback(() => {
     setIsActive(false);
+    setIsPaused(false);
     clearInterval(timerInterval.current);
     setShowFiveSecondWarning(false);
     
@@ -415,10 +420,18 @@ const PomodoroApp = () => {
 
   // Démarrer/Pause le minuteur
   const toggleTimer = () => {
-    setIsActive(!isActive);
-    announce(isActive ? 'Pause' : 'Reprise');
+    if (isActive) {
+      // Si le timer est actif et qu'on le met en pause
+      setIsActive(false);
+      setIsPaused(true); // Marquer comme "en pause" au lieu de "arrêté"
+      announce('Pause');
+    } else {
+      // Si le timer n'est pas actif, le démarrer/reprendre
+      setIsActive(true);
+      setIsPaused(false); // Plus en pause
+      announce('Reprise');
+    }
   };
-
   // Passer à la session suivante
   const skipToNext = () => {
     if (isCycleActive) {
@@ -437,6 +450,7 @@ const PomodoroApp = () => {
     setRemainingCycles(settings.longBreakInterval);
     switchMode('pomodoro');
     setIsActive(true);
+    setIsPaused(false);
     playSound(startCycleSoundRef); // Son spécial pour le début d'un cycle
     announce(t.startingCycle);
   };
@@ -445,6 +459,7 @@ const PomodoroApp = () => {
   const stopCycle = () => {
     setIsCycleActive(false);
     setIsActive(false);
+    setIsPaused(false);
     setCompletedPomodoros(0);
     setRemainingCycles(settings.longBreakInterval);
     setShowFiveSecondWarning(false);
@@ -557,11 +572,17 @@ const PomodoroApp = () => {
 
   // Effet pour le timer
   useEffect(() => {
-    if (isActive) {
-      startTimerCountdown();
-    } else {
-      clearInterval(timerInterval.current);
+    // Si on n'est pas en cycle actif et qu'on change les paramètres
+    // ET on n'est pas simplement en pause
+    if (!isActive && !isCycleActive && !isPaused) {
+      resetTimer();  // Ne réinitialise le timer que si on n'est pas en pause
     }
+    
+    // Mettre à jour le localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pomodoroSettings', JSON.stringify(settings));
+    }
+  }, [settings, isActive, isCycleActive, isPaused, resetTimer]);
 
     return () => clearInterval(timerInterval.current);
   }, [isActive, startTimerCountdown]);
