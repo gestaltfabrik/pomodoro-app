@@ -570,7 +570,7 @@ const PomodoroApp = () => {
     document.title = newTitle;
   }, [isActive, isPomodoro, mode, timer, t]);
 
-  // Effet pour le timer
+ // Effet pour les paramètres - Modifié pour prendre en compte l'état de pause
   useEffect(() => {
     // Si on n'est pas en cycle actif et qu'on change les paramètres
     // ET on n'est pas simplement en pause
@@ -583,6 +583,14 @@ const PomodoroApp = () => {
       localStorage.setItem('pomodoroSettings', JSON.stringify(settings));
     }
   }, [settings, isActive, isCycleActive, isPaused, resetTimer]);
+
+  // Effet pour le timer
+  useEffect(() => {
+    if (isActive) {
+      startTimerCountdown();
+    } else {
+      clearInterval(timerInterval.current);
+    }
 
     return () => clearInterval(timerInterval.current);
   }, [isActive, startTimerCountdown]);
