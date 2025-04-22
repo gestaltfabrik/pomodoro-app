@@ -424,6 +424,7 @@ const PomodoroApp = () => {
       // Si le timer est actif et qu'on le met en pause
       setIsActive(false);
       setIsPaused(true); // Marquer comme "en pause" au lieu de "arrêté"
+      clearInterval(timerInterval.current); // Arrêter l'intervalle explicitement
       announce('Pause');
     } else {
       // Si le timer n'est pas actif, le démarrer/reprendre
@@ -432,6 +433,7 @@ const PomodoroApp = () => {
       announce('Reprise');
     }
   };
+  
   // Passer à la session suivante
   const skipToNext = () => {
     if (isCycleActive) {
@@ -570,7 +572,7 @@ const PomodoroApp = () => {
     document.title = newTitle;
   }, [isActive, isPomodoro, mode, timer, t]);
 
- // Effet pour les paramètres - Modifié pour prendre en compte l'état de pause
+  // Effet pour les paramètres - Modifié pour prendre en compte l'état de pause
   useEffect(() => {
     // Si on n'est pas en cycle actif et qu'on change les paramètres
     // ET on n'est pas simplement en pause
@@ -594,19 +596,6 @@ const PomodoroApp = () => {
 
     return () => clearInterval(timerInterval.current);
   }, [isActive, startTimerCountdown]);
-
-  // Effet pour les paramètres
-  useEffect(() => {
-    // Si on n'est pas en cycle actif et qu'on change les paramètres
-    if (!isActive && !isCycleActive) {
-      resetTimer();
-    }
-    
-    // Mettre à jour le localStorage
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('pomodoroSettings', JSON.stringify(settings));
-    }
-  }, [settings, isActive, isCycleActive, resetTimer]);
 
   // Effet pour le titre dynamique
   useEffect(() => {
